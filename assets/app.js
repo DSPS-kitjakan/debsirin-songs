@@ -106,6 +106,11 @@
       s.cat = cats[pos[s.category]];
       s.lines = [];
       (s.stanzas || []).forEach(function (st) { (st.lines || []).forEach(function (l) { s.lines.push(l); }); });
+      s.clips = (Array.isArray(s.clips) && s.clips.length ? s.clips : (s.youtubeId ? [{ id: s.youtubeId, label: '' }] : []))
+        .filter(function (c) { return c && /^[\w-]{11}$/.test(c.id); }).slice(0, 2);
+      s.clips.forEach(function (c, n) {
+        c.btn = c.label || ('ดูคลิป' + (s.clips.length > 1 && !s.clips[1 - n].label ? ' ' + (n + 1) : ''));
+      });
       s._t = norm(s.title);
       s._l = s.lines.map(norm);
       byId[s.id] = s;
@@ -250,7 +255,7 @@
       (snip ? '<span style="flex:1"></span>' : '<span class="dots" aria-hidden="true"></span>') +
       '<span class="has">' +
       (s.audio ? I.note + '<span class="sr">มีเสียงเพลง</span>' : '') +
-      (s.youtubeId ? I.clip + '<span class="sr">มีคลิป</span>' : '') +
+      (s.clips.length ? I.clip + '<span class="sr">มีคลิป</span>' : '') +
       '</span></a>' + favBtn(s) + '</li>';
   }
 
@@ -386,9 +391,11 @@
       (credit.length ? '<p class="credit">' + esc(credit.join('   ')) + '</p>' : '') +
       '<div class="media">' +
         (s.audio ? '<button class="btn btn-fill" type="button" id="listen"></button>' : '') +
-        (s.youtubeId ? '<button class="btn btn-line" type="button" id="clipBtn" aria-expanded="false" aria-controls="clip">' + I.clip + 'ดูคลิป</button>' : '') +
+        s.clips.map(function (c, n) {
+          return '<button class="btn btn-line clip-btn" type="button" data-clip="' + n + '" aria-expanded="false" aria-controls="clip">' + I.clip + esc(c.btn) + '</button>';
+        }).join('') +
         '<button class="btn btn-line" type="button" id="showBtn">' + I.screen + 'ฉายขึ้นจอ</button>' +
-      '</div>' + (s.youtubeId ? '<div class="clip" id="clip" hidden></div>' : '') +
+      '</div>' + (s.clips.length ? '<div class="clip" id="clip" hidden></div>' : '') +
       '</div>' +
       '<div class="lyrics">' + lyrics + '</div>' +
       '<nav class="pager" aria-label="เพลงก่อนหน้าและถัดไป">' +
@@ -406,7 +413,9 @@
       location.hash = '#/show/' + encodeURIComponent(s.id);
     };
     if (s.audio) { $('#listen').onclick = function () { playSong(s); }; updateListenBtn(); }
-    if (s.youtubeId) $('#clipBtn').onclick = function () { toggleClip(s); };
+    document.querySelectorAll('.clip-btn').forEach(function (b) {
+      b.onclick = function () { toggleClip(s, Number(b.getAttribute('data-clip'))); };
+    });
   }
 
   function setFs(d) {
@@ -420,20 +429,37 @@
     if ($('#fsUp')) $('#fsUp').disabled = S.fs === FS.length - 1;
   }
 
-  function toggleClip(s) {
-    var box = $('#clip'), btn = $('#clipBtn'), open = box.hidden;
-    if (open) {
+  // "ดูคลิป 1" → "ปิดคลิป 1", "คลิปร้อง" → "ปิดคลิปร้อง", "สอนท่าเชียร์" → "ปิดคลิป สอนท่าเชียร์"
+  function closeLabel(label) {
+    if (/^ดูคลิป/.test(label)) return label.replace(/^ดู/, 'ปิด');
+    if (/^คลิป/.test(label)) return 'ปิด' + label;
+    return 'ปิดคลิป ' + label;
+  }
+
+  /** เปิดคลิปที่ n (กดปุ่มเดิมซ้ำ = ปิด, กดอีกปุ่ม = สลับคลิป) */
+  function toggleClip(s, n) {
+    var box = $('#clip');
+    if (!box) return;
+    var current = box.hidden ? -1 : Number(box.getAttribute('data-open'));
+    var target = (n === undefined || n === current) ? -1 : n;
+    if (target >= 0) {
+      var c = s.clips[target];
       if (!audio.paused) audio.pause();
-      box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(s.youtubeId) +
-        '?autoplay=1&rel=0&playsinline=1" title="คลิป ' + esc(s.title) + '" ' +
+      box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(c.id) +
+        '?autoplay=1&rel=0&playsinline=1" title="' + esc(c.btn + ' ' + s.title) + '" ' +
         'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+      box.setAttribute('data-open', target);
       box.hidden = false;
     } else {
       box.innerHTML = '';
+      box.removeAttribute('data-open');
       box.hidden = true;
     }
-    btn.setAttribute('aria-expanded', open);
-    btn.innerHTML = I.clip + (open ? 'ปิดคลิป' : 'ดูคลิป');
+    document.querySelectorAll('.clip-btn').forEach(function (b) {
+      var i = Number(b.getAttribute('data-clip')), on = i === target;
+      b.setAttribute('aria-expanded', on);
+      b.innerHTML = I.clip + esc(on ? closeLabel(s.clips[i].btn) : s.clips[i].btn);
+    });
   }
 
   function shareSong(s) {
@@ -470,7 +496,7 @@
     audio.src = s.audio;
     audio.play().catch(function () {});
     var clip = $('#clip');
-    if (clip && !clip.hidden) toggleClip(s);
+    if (clip && !clip.hidden) toggleClip(S.byId[parseHash().id] || s);
     $('#ptitle').textContent = 'เพลงที่ ' + s.no + '  ' + s.title;
     $('#ptitle').href = '#/song/' + encodeURIComponent(s.id);
     $('#pcur').textContent = '0:00'; $('#pdur').textContent = '0:00'; $('#pseek').value = 0;
@@ -594,7 +620,7 @@
         '<p class="poster-no"><span>เพลงที่ ' + s.no + '</span>' + esc(s.cat.name) + '</p>' +
         '<h1>' + esc(s.title) + '</h1>' +
         '<div class="poster-qr">' + qrSvg(songUrl(s), 'คิวอาร์โค้ดเพลง ' + s.title) + '</div>' +
-        '<p class="poster-call">สแกนเพื่อเปิดเนื้อเพลง' + (s.audio ? ' ฟังเพลง' : '') + (s.youtubeId ? ' ดูคลิป' : '') + '</p>' +
+        '<p class="poster-call">สแกนเพื่อเปิดเนื้อเพลง' + (s.audio ? ' ฟังเพลง' : '') + (s.clips.length ? ' ดูคลิป' : '') + '</p>' +
         '<p class="poster-url">' + esc(songUrl(s)) + '</p></section>';
     } else {
       document.title = 'QR ทุกเพลง | ' + BASE_TITLE;
