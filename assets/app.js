@@ -1,9 +1,9 @@
-/* สมุดเพลงเชียร์ เทพศิรินทร์พุแค (หน้าเว็บนักเรียน) */
+/* สมุดเพลงเชียร์ เทพศิรินทร์พุแค สระบุรี (หน้าเว็บนักเรียน) */
 (function () {
   'use strict';
 
   var DATA_URL = 'data/songs.json';
-  var BASE_TITLE = 'สมุดเพลงเชียร์ เทพศิรินทร์พุแค';
+  var BASE_TITLE = 'สมุดเพลงเชียร์ เทพศิรินทร์พุแค สระบุรี';
   var KEY = { data: 'songbook:data', fav: 'songbook:fav', fs: 'songbook:fs', show: 'songbook:showmode' };
   var FS = [16, 18, 20, 23, 26, 30];
   var TAB_COLORS = ['#F2C230', '#4FA36B', '#6F88D6', '#E07BA6', '#E8904A'];
@@ -478,7 +478,7 @@
     document.body.classList.add('has-player');
     if ('mediaSession' in navigator && window.MediaMetadata) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: s.title, artist: 'เพลงเชียร์ เทพศิรินทร์พุแค', album: s.cat.name,
+        title: s.title, artist: 'เพลงเชียร์ เทพศิรินทร์พุแค สระบุรี', album: s.cat.name,
         artwork: [{ src: 'assets/icon-512.png', sizes: '512x512', type: 'image/png' }]
       });
       navigator.mediaSession.setActionHandler('play', function () { audio.play(); });

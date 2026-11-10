@@ -1,6 +1,6 @@
 /* เก็บหน้าเว็บไว้ในเครื่อง เปิดได้แม้สัญญาณอินเทอร์เน็ตในสนามไม่ดี
    แก้ไฟล์หน้าเว็บเมื่อไร ให้เปลี่ยนเลขเวอร์ชันด้านล่างด้วย */
-var VERSION = 'songbook-v2';
+var VERSION = 'songbook-v4';
 var SHELL = [
   './', 'index.html', 'assets/style.css', 'assets/app.js', 'assets/qrcode.js', 'assets/logo.png',
   'assets/favicon.png', 'assets/icon-192.png', 'manifest.webmanifest'
